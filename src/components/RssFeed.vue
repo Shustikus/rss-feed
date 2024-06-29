@@ -7,10 +7,10 @@ export default {
   },
   async created() {
     await this.fetchRssFeed();
-    this.startPolling();
+    this.pollingInterval = setInterval(this.fetchRssFeed, 60000); // 1 минута
   },
   beforeDestroy() {
-    this.stopPolling();
+    clearInterval(this.pollingInterval);
   },
   methods: {
     async fetchRssFeed() {
@@ -19,31 +19,18 @@ export default {
         const xmlText = await response.text();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-
         const channel = xmlDoc.querySelector('channel');
-        if (!channel) {
-          throw new Error('Invalid RSS feed: missing channel');
-        }
+        if (!channel) throw new Error('Invalid RSS feed: missing channel');
 
-        const items = Array.from(channel.querySelectorAll('item')).map(item => ({
-          title: item.querySelector('title')?.textContent,
-          description: item.querySelector('description')?.textContent,
-          pubDate: item.querySelector('pubDate')?.textContent,
-          link: item.querySelector('link')?.textContent
+        this.rssItems = Array.from(channel.querySelectorAll('item')).map(item => ({
+          title: item.querySelector('title')?.textContent || '',
+          description: item.querySelector('description')?.textContent || '',
+          pubDate: item.querySelector('pubDate')?.textContent || '',
+          link: item.querySelector('link')?.textContent || ''
         }));
-
-        this.rssItems = items;
       } catch (error) {
         console.error('Error fetching RSS feed:', error);
       }
-    },
-    startPolling() {
-      this.pollingInterval = setInterval(async () => {
-        await this.fetchRssFeed();
-      }, 60000); // 1 минута
-    },
-    stopPolling() {
-      clearInterval(this.pollingInterval);
     }
   }
 };
