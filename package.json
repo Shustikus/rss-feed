@@ -1,0 +1,23 @@
+{
+  "name": "rss-feed",
+  "version": "0.0.0",
+  "private": true,
+  "homepage": "https://shustikus.github.io/rss-feed",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "vue": "^3.2.47",
+    "vue-router": "^4.2.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.0.0",
+    "gh-pages": "^6.1.1",
+    "vite": "^4.1.4"
+  }
+}
