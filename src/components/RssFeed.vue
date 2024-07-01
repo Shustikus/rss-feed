@@ -15,7 +15,7 @@ export default {
   methods: {
     async fetchRssFeed() {
       try {
-        const response = await fetch('https://backend-seven-umber-48.vercel.app/rss');
+        const response = await fetch('https://test.wannatrend.ru/rss');
         const xmlText = await response.text();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
