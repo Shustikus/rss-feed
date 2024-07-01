@@ -1,44 +1,37 @@
-const RSSParser = require('rss-parser');
+const express = require("express");
+const Parser = require("rss-parser");
 const xml = require('xml');
-const express = require('express');
-const cors = require('cors');
 const dayjs = require('dayjs');
 const utc = require('dayjs/plugin/utc');
 const timezone = require('dayjs/plugin/timezone');
-const https = require('https');
+const cors = require('cors');
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const httpsAgent = new https.Agent({
-    keepAlive: true,
-    timeout: 10000,
-    rejectUnauthorized: false
-});
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Список RSS каналов
+const rssUrls = [
+    'https://lenta.ru/rss/news',
+    'https://tass.ru/rss/anews.xml?sections=NDczMA%3D%3D',
+    'https://www.vedomosti.ru/rss/news.xml',
+    'http://static.feed.rbc.ru/rbc/logical/footer/news.rss',
+    'https://www.sports.ru/rss/main.xml'
+];
 
 const fetchRSSData = async (url) => {
-    const response = await fetch(url, {
-        agent: httpsAgent,
-        headers: {
-            'User-Agent': 'RSSFetcher/1.0',
-            'Accept': 'application/rss+xml, application/xml'
-        }
-    });
-
-    if (!response.ok) {
-        throw new Error(`Ошибка HTTP: ${response.status}`);
+    const parser = new Parser();
+    try {
+        const feed = await parser.parseURL(url);
+        return {
+            title: feed.title || 'Без названия',
+            items: feed.items || []
+        };
+    } catch (error) {
+        throw new Error(`Не удалось загрузить или обработать RSS ленту ${url}: ${error.message}`);
     }
-
-    return await response.text();
-};
-
-const parseRSSData = async (data) => {
-    const parser = new RSSParser();
-    const feed = await parser.parseString(data);
-    return {
-        title: feed.title,
-        items: feed.items
-    };
 };
 
 const aggregateRSSFeeds = async (feeds) => {
@@ -46,10 +39,9 @@ const aggregateRSSFeeds = async (feeds) => {
 
     for (const feed of feeds) {
         try {
-            const data = await fetchRSSData(feed);
-            const parsedData = await parseRSSData(data);
-            parsedData.items.forEach(item => {
-                item.sourceTitle = parsedData.title;
+            const {items, title} = await fetchRSSData(feed);
+            items.forEach(item => {
+                item.sourceTitle = title;
                 allItems.push(item);
             });
         } catch (error) {
@@ -57,7 +49,16 @@ const aggregateRSSFeeds = async (feeds) => {
         }
     }
 
-    allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+    allItems.sort((a, b) => {
+        const dateA = dayjs(a.pubDate);
+        const dateB = dayjs(b.pubDate);
+        if (dateA.isValid() && dateB.isValid()) {
+            return dateB - dateA;
+        } else {
+            return 0;
+        }
+    });
+
     return allItems;
 };
 
@@ -69,10 +70,10 @@ const formatRSSFeed = (items) => {
             {
                 channel: items.map(item => ({
                     item: [
-                        {title: item.title},
-                        {link: item.link},
-                        {pubDate: dayjs(item.pubDate).tz(timeZone).format('MMM DD YYYY | HH:mm')},
-                        {description: `${item.sourceTitle}`}
+                        {title: item.title || 'Без заголовка'},
+                        {link: item.link || ''},
+                        {pubDate: item.pubDate ? dayjs(item.pubDate).tz(timeZone).format('MMM DD YYYY | HH:mm') : ''}, 
+                        {description: `${item.sourceTitle || 'Неизвестный источник'}`}
                     ]
                 }))
             }
@@ -84,6 +85,10 @@ const formatRSSFeed = (items) => {
 
 class RSSService {
     constructor(feeds) {
+        if (!Array.isArray(feeds) || feeds.length === 0) {
+            throw new Error('Не переданы корректные ленты RSS для RSSService');
+        }
+
         this.feeds = feeds;
         this.cachedFeed = '';
         this.updateInterval = 60000;
@@ -106,26 +111,16 @@ class RSSService {
     }
 }
 
-const rssUrls = [
-    'https://lenta.ru/rss/news',
-    'https://tass.ru/rss/anews.xml?sections=NDczMA%3D%3D',
-    'https://www.vedomosti.ru/rss/news.xml',
-    'http://static.feed.rbc.ru/rbc/logical/footer/news.rss',
-    'https://www.sports.ru/rss/main.xml'
-];
-
-const app = express();
-const port = 3000;
 
 const rssService = new RSSService(rssUrls);
 
 app.use(cors({
     origin: 'https://shustikus.github.io',
-    methods: ['GET'],
+    methods: ['GET'], 
     allowedHeaders: ['Content-Type']
 }));
 
-app.get('/rss', (req, res) => {
+app.get('/', (req, res) => {
     res.set('Content-Type', 'application/rss+xml');
     res.send(rssService.getCachedFeed());
 });
