@@ -26,7 +26,8 @@ export default {
           title: item.querySelector('title')?.textContent || '',
           description: item.querySelector('description')?.textContent || '',
           pubDate: item.querySelector('pubDate')?.textContent || '',
-          link: item.querySelector('link')?.textContent || ''
+          link: item.querySelector('link')?.textContent || '',
+          imageUrl: item.querySelector('enclosure')?.getAttribute('url') || ''
         }));
       } catch (error) {
         console.error('Error fetching RSS feed:', error);
@@ -42,6 +43,9 @@ export default {
     <ul v-if="rssItems.length > 0">
       <li v-for="(item, index) in rssItems" :key="index">
         <h2>{{ item.title }}</h2>
+        <div v-if="item.imageUrl" class="image-container">
+          <img :src="item.imageUrl" :alt="item.title" />
+        </div>
         <p>{{ item.description }}</p>
         <p>{{ item.pubDate }}</p>
         <a :href="item.link" target="_blank">Читать дальше...</a>
@@ -51,8 +55,28 @@ export default {
   </div>
 </template>
 
-
 <style scoped>
+.rss-feed ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.rss-feed li {
+  margin-bottom: 2rem;
+}
+
+.image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.rss-feed img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
 .rss-feed {
   max-width: 800px;
   margin: 0 auto;
