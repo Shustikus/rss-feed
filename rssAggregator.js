@@ -14,7 +14,6 @@ const app = express();
 const port = process.env.PORT || 3000;
 const rssFilePath = 'aggregated_feed.xml';
 
-// Список RSS каналов
 const rssUrls = [
     'https://lenta.ru/rss/news',
     'https://tass.ru/rss/anews.xml?sections=NDczMA%3D%3D',
@@ -29,7 +28,7 @@ const fetchRSSData = async (url) => {
         const feed = await parser.parseURL(url);
         return {
             title: feed.title || 'Без названия',
-            items: feed.items || [] 
+            items: feed.items || []
         };
     } catch (error) {
         throw new Error(`Не удалось загрузить или обработать RSS ленту ${url}: ${error.message}`);
@@ -76,7 +75,8 @@ const formatRSSFeed = (items) => {
                             {title: {'_cdata': item.title || 'Без заголовка'}},
                             {link: item.link || ''},
                             {pubDate: item.pubDate ? dayjs(item.pubDate).tz(timeZone).format('MMM DD YYYY | HH:mm') : ''},
-                            {description: {'_cdata': `${item.sourceTitle || 'Неизвестный источник'}`}}
+                            {Source: {'_cdata': `${item.sourceTitle || 'Неизвестный источник'}`}},
+                            {description: {'_cdata': item.content || item.summary || 'Без описания'}},
                         ];
 
                         if (item.enclosure && item.enclosure.url) {
@@ -109,8 +109,6 @@ const formatRSSFeed = (items) => {
     return xml(rssFeed, {declaration: true});
 };
 
-
-// Функция для сохранения RSS ленты в файл
 const saveRSSFeedToFile = (rssFeed) => {
     fs.writeFile(rssFilePath, rssFeed, (err) => {
         if (err) {
@@ -138,7 +136,7 @@ class RSSService {
         try {
             const aggregatedItems = await aggregateRSSFeeds(this.feeds);
             this.cachedFeed = formatRSSFeed(aggregatedItems);
-            saveRSSFeedToFile(this.cachedFeed); // Сохранение RSS ленты в файл
+            saveRSSFeedToFile(this.cachedFeed);
             console.log('RSS лента обновлена');
         } catch (error) {
             console.error('Ошибка обновления RSS ленты:', error);
@@ -153,7 +151,7 @@ class RSSService {
 const rssService = new RSSService(rssUrls);
 
 app.use(cors({
-    origin: 'https://shustikus.github.io', 
+    origin: 'https://shustikus.github.io',
     methods: ['GET'],
     allowedHeaders: ['Content-Type']
 }));
