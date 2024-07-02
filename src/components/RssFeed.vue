@@ -7,7 +7,7 @@ export default {
   },
   async created() {
     await this.fetchRssFeed();
-    this.pollingInterval = setInterval(this.fetchRssFeed, 60000);
+    this.pollingInterval = setInterval(this.fetchRssFeed, 60000); // 1 минута
   },
   beforeDestroy() {
     clearInterval(this.pollingInterval);
@@ -23,24 +23,23 @@ export default {
         if (!channel) throw new Error('Invalid RSS feed: missing channel');
 
         this.rssItems = Array.from(channel.querySelectorAll('item')).map(item => {
-          const titleNode = item.querySelector('title');
-          const descriptionNode = item.querySelector('description');
-          const enclosureNode = item.querySelector('enclosure');
+          const enclosure = item.querySelector('enclosure');
+          const type = enclosure?.getAttribute('type');
 
-          const type = enclosureNode?.getAttribute('type');
-
+          // Проверяем, что тип вложения не является видео
           if (!type || !type.startsWith('video/')) {
             return {
-              title: titleNode ? titleNode.innerHTML.trim() : '',
-              link: item.querySelector('link')?.textContent || '',
+              title: item.querySelector('title')?.textContent || '',
+              description: item.querySelector('description')?.textContent || '',
+              Source: item.querySelector('Source')?.textContent || '',
               pubDate: item.querySelector('pubDate')?.textContent || '',
-              description: descriptionNode ? descriptionNode.innerHTML.trim() : '',
-              imageUrl: enclosureNode ? enclosureNode.getAttribute('url') : ''
+              link: item.querySelector('link')?.textContent || '',
+              imageUrl: type && type.startsWith('image/') ? enclosure.getAttribute('url') : ''
             };
           } else {
             return null;
           }
-        }).filter(item => item !== null); 
+        }).filter(item => item !== null);
       } catch (error) {
         console.error('Error fetching RSS feed:', error);
       }
@@ -59,6 +58,7 @@ export default {
           <img :alt="item.title" :src="item.imageUrl"/>
         </div>
         <p>{{ item.description }}</p>
+        <p>{{ item.Source }}</p>
         <p>{{ item.pubDate }}</p>
         <a :href="item.link" target="_blank">Читать дальше...</a>
       </li>
