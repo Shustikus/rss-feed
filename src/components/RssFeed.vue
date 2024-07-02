@@ -7,7 +7,7 @@ export default {
   },
   async created() {
     await this.fetchRssFeed();
-    this.pollingInterval = setInterval(this.fetchRssFeed, 60000); // 1 минута
+    this.pollingInterval = setInterval(this.fetchRssFeed, 60000);
   },
   beforeDestroy() {
     clearInterval(this.pollingInterval);
@@ -22,13 +22,25 @@ export default {
         const channel = xmlDoc.querySelector('channel');
         if (!channel) throw new Error('Invalid RSS feed: missing channel');
 
-        this.rssItems = Array.from(channel.querySelectorAll('item')).map(item => ({
-          title: item.querySelector('title')?.textContent || '',
-          description: item.querySelector('description')?.textContent || '',
-          pubDate: item.querySelector('pubDate')?.textContent || '',
-          link: item.querySelector('link')?.textContent || '',
-          imageUrl: item.querySelector('enclosure')?.getAttribute('url') || ''
-        }));
+        this.rssItems = Array.from(channel.querySelectorAll('item')).map(item => {
+          const titleNode = item.querySelector('title');
+          const descriptionNode = item.querySelector('description');
+          const enclosureNode = item.querySelector('enclosure');
+
+          const type = enclosureNode?.getAttribute('type');
+
+          if (!type || !type.startsWith('video/')) {
+            return {
+              title: titleNode ? titleNode.innerHTML.trim() : '',
+              link: item.querySelector('link')?.textContent || '',
+              pubDate: item.querySelector('pubDate')?.textContent || '',
+              description: descriptionNode ? descriptionNode.innerHTML.trim() : '',
+              imageUrl: enclosureNode ? enclosureNode.getAttribute('url') : ''
+            };
+          } else {
+            return null;
+          }
+        }).filter(item => item !== null); 
       } catch (error) {
         console.error('Error fetching RSS feed:', error);
       }
@@ -44,7 +56,7 @@ export default {
       <li v-for="(item, index) in rssItems" :key="index">
         <h2>{{ item.title }}</h2>
         <div v-if="item.imageUrl" class="image-container">
-          <img :src="item.imageUrl" :alt="item.title" />
+          <img :alt="item.title" :src="item.imageUrl"/>
         </div>
         <p>{{ item.description }}</p>
         <p>{{ item.pubDate }}</p>
@@ -77,6 +89,7 @@ export default {
   height: auto;
   display: block;
 }
+
 .rss-feed {
   max-width: 800px;
   margin: 0 auto;
