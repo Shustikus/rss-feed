@@ -23,13 +23,12 @@ const rssUrls = [
     'https://www.sports.ru/rss/main.xml'
 ];
 
-// Функция для загрузки данных из RSS канала
 const fetchRSSData = async (url) => {
     const parser = new Parser();
     try {
         const feed = await parser.parseURL(url);
         return {
-            title: feed.title || 'Без названия', 
+            title: feed.title || 'Без названия',
             items: feed.items || [] 
         };
     } catch (error) {
@@ -74,10 +73,10 @@ const formatRSSFeed = (items) => {
                 channel: [
                     ...items.map(item => {
                         const rssItem = [
-                            {title: item.title || 'Без заголовка'},
+                            {title: {'_cdata': item.title || 'Без заголовка'}},
                             {link: item.link || ''},
                             {pubDate: item.pubDate ? dayjs(item.pubDate).tz(timeZone).format('MMM DD YYYY | HH:mm') : ''},
-                            {description: `${item.sourceTitle || 'Неизвестный источник'}`}
+                            {description: {'_cdata': `${item.sourceTitle || 'Неизвестный источник'}`}}
                         ];
 
                         if (item.enclosure && item.enclosure.url) {
@@ -109,6 +108,7 @@ const formatRSSFeed = (items) => {
 
     return xml(rssFeed, {declaration: true});
 };
+
 
 // Функция для сохранения RSS ленты в файл
 const saveRSSFeedToFile = (rssFeed) => {
@@ -153,9 +153,9 @@ class RSSService {
 const rssService = new RSSService(rssUrls);
 
 app.use(cors({
-    origin: 'https://shustikus.github.io',
+    origin: 'https://shustikus.github.io', 
     methods: ['GET'],
-    allowedHeaders: ['Content-Type'] 
+    allowedHeaders: ['Content-Type']
 }));
 
 app.get('/rss', (req, res) => {
